@@ -48,8 +48,8 @@ namespace llvm {
                 this->flag = flag;
             }
             PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM); // Pass实现函数
-            void insertArrayDecryption(Module &M, EncryptedGV encGV);
-            void insertIntDecryption(Module &M, EncryptedGV encGV);
+            void insertArrayDecryption(Module &M, EncryptedGV encGV, ConstantDataArray*);
+            void insertIntDecryption(Module &M, EncryptedGV encGV, ConstantInt*);
             static bool isRequired() { return true; } // 直接返回true即可
     };
     StringEncryptionPass *createStringEncryption(bool flag); // 创建字符串加密
