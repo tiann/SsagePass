@@ -26,8 +26,9 @@ using namespace llvm;
 namespace llvm
 {
 
-    bool IPObfuscationContext::runOnModule(llvm::Module &M)
+    PreservedAnalyses IPObfuscationContext::run(llvm::Module &M, ModuleAnalysisManager &AM)
     {
+        outs() << "\033[1;32m[IPObfuscationContext] is running\n";
         for (auto &F : M)
         {
             SurveyFunction(F);
@@ -68,7 +69,7 @@ namespace llvm
             }
             Slot->eraseFromParent();
         }
-        return true;
+        return PreservedAnalyses::all();
     }
 
     void IPObfuscationContext::SurveyFunction(Function &F)
@@ -93,12 +94,13 @@ namespace llvm
             }
         }
 
-        LLVM_DEBUG(dbgs() << "Enqueue Local Function  " << F.getName() << "\n");
+        outs() << "\033[1;32m[IPObfuscationContext] Enqueue Local Function  " << F.getName() << "\n";
         LocalFunctions.insert(&F);
     }
 
     Function *IPObfuscationContext::InsertSecretArgument(Function *F)
     {
+        outs() << "\033[1;32m[IPObfuscationContext] Insert secret argument " << F->getName() << "\n";
         FunctionType *FTy = F->getFunctionType();
         std::vector<Type *> Params;
 
@@ -285,13 +287,10 @@ namespace llvm
 
     char IPObfuscationContext::ID = 0;
 
-    bool IPObfuscationContext::doFinalization(Module &)
+    void IPObfuscationContext::finalize()
     {
         for (auto *Info : IPOInfoList)
-        {
             delete (Info);
-        }
-        return false;
     }
 
     const IPObfuscationContext::IPOInfo *IPObfuscationContext::getIPOInfo(Function *F)
@@ -328,4 +327,4 @@ IPObfuscationContext *llvm::createIPObfuscationContextPass(bool flag)
     return new IPObfuscationContext(flag);
 }
 
-INITIALIZE_PASS(IPObfuscationContext, "ipobf", "IPObfuscationContext", false, false)
+/* INITIALIZE_PASS(IPObfuscationContext, "ipobf", "IPObfuscationContext", false, false) */

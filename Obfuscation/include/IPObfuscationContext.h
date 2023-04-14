@@ -5,6 +5,7 @@
 #include "llvm/IR/Function.h"
 #include "compat/CallSite.h"
 #include "llvm/Pass.h"
+#include "llvm/IR/PassManager.h"
 #include <set>
 #include <map>
 
@@ -15,7 +16,7 @@ namespace llvm
     class FunctionPass;
     class PassRegistry;
 
-    struct IPObfuscationContext : public ModulePass
+    struct IPObfuscationContext : public PassInfoMixin<IPObfuscationContext>
     {
         static char ID;
         bool flag;
@@ -40,8 +41,10 @@ namespace llvm
         std::map<Function *, IPOInfo *> IPOInfoMap;
         std::vector<AllocaInst *> DeadSlots;
 
-        IPObfuscationContext() : ModulePass(ID) { this->flag = false; }
-        IPObfuscationContext(bool flag) : ModulePass(ID) { this->flag = flag; }
+        IPObfuscationContext(bool flag) { this->flag = flag; }
+        ~IPObfuscationContext() {
+            finalize();
+        }
 
         void SurveyFunction(Function &F);
         Function *InsertSecretArgument(Function *F);
@@ -49,8 +52,8 @@ namespace llvm
         IPOInfo *AllocaSecretSlot(Function &F);
         const IPOInfo *getIPOInfo(Function *F);
 
-        bool runOnModule(Module &M) override;
-        bool doFinalization(Module &) override;
+        PreservedAnalyses run(Module &M, ModuleAnalysisManager&);
+        void finalize();
     };
 
     IPObfuscationContext *createIPObfuscationContextPass(bool flag);
