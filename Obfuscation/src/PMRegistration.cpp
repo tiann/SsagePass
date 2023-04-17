@@ -34,17 +34,17 @@ llvm::PassPluginLibraryInfo getSsagePluginInfo() {
               [&](StringRef Name, FunctionPassManager &FPM,
                 ArrayRef<PassBuilder::PipelineElement>) {
                 if(Name == "ofla"){ // 注册控制流平坦化
-                  FPM.addPass(FlatteningPass(false));
+                  FPM.addPass(FlatteningPass(true));
                   return true;
                 }
                 if(Name == "mba"){
                   FPM.addPass(MBAObfuscation(true)); // 来自 Pluto 的线性混合布尔算术混淆
                   return true;
                 }
-                /* if(Name == "split"){ // 注册基本块分割 */
-                /*   FPM.addPass(SplitBasicBlockPass(true)); */
-                /*   return true; */
-                /* } */
+                if(Name == "split"){ // 注册基本块分割
+                  FPM.addPass(SplitBasicBlockPass(true));
+                  return true;
+                }
                 if(Name == "icall"){
                   FPM.addPass(IndirectCallPass(true)); // 来自goron的间接调用
                   return true;
@@ -55,6 +55,10 @@ llvm::PassPluginLibraryInfo getSsagePluginInfo() {
                 }
                 if(Name == "lower-switch"){ // 注册虚假控制流
                   FPM.addPass(LegacyLowerSwitch(true));
+                  return true;
+                }
+                if(Name == "vmf"){ // 注册虚假控制流
+                  FPM.addPass(VMFlattenPass(true));
                   return true;
                 }
                 return false;
