@@ -44,9 +44,6 @@ using namespace llvm;
 
 namespace {
 
-struct IntRange {
-  int64_t Low, High;
-};
 
 } // end anonymous namespace
 
@@ -63,60 +60,9 @@ static bool IsInRanges(const IntRange &R, const std::vector<IntRange> &Ranges) {
   return I != Ranges.end() && I->Low <= R.Low;
 }
 
-namespace {
-
-/// Replace all SwitchInst instructions with chained branch instructions.
-class LowerSwitch : public FunctionPass {
-public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  LowerSwitch() : FunctionPass(ID) {
-    // initializeLowerSwitchPass(*PassRegistry::getPassRegistry());
-  }
-
-  bool runOnFunction(Function &F) override;
-
-  struct CaseRange {
-    ConstantInt *Low;
-    ConstantInt *High;
-    BasicBlock *BB;
-
-    CaseRange(ConstantInt *low, ConstantInt *high, BasicBlock *bb)
-        : Low(low), High(high), BB(bb) {}
-  };
-
-  using CaseVector = std::vector<CaseRange>;
-  using CaseItr = std::vector<CaseRange>::iterator;
-
-private:
-  void processSwitchInst(SwitchInst *SI,
-                         SmallPtrSetImpl<BasicBlock *> &DeleteList);
-
-  BasicBlock *switchConvert(CaseItr Begin, CaseItr End, ConstantInt *LowerBound,
-                            ConstantInt *UpperBound, Value *Val,
-                            BasicBlock *Predecessor, BasicBlock *OrigBlock,
-                            BasicBlock *Default,
-                            const std::vector<IntRange> &UnreachableRanges);
-  BasicBlock *newLeafBlock(CaseRange &Leaf, Value *Val, BasicBlock *OrigBlock,
-                           BasicBlock *Default);
-  unsigned Clusterify(CaseVector &Cases, SwitchInst *SI);
-};
-
-/// The comparison function for sorting the switch case values in the vector.
-/// WARNING: Case ranges should be disjoint!
-struct CaseCmp {
-  bool operator()(const LowerSwitch::CaseRange &C1,
-                  const LowerSwitch::CaseRange &C2) {
-    const ConstantInt *CI1 = cast<const ConstantInt>(C1.Low);
-    const ConstantInt *CI2 = cast<const ConstantInt>(C2.High);
-    return CI1->getValue().slt(CI2->getValue());
-  }
-};
-
-} // end anonymous namespace
-
-char LowerSwitch::ID = 0;
+PreservedAnalyses LegacyLowerSwitch::run(Function &F, FunctionAnalysisManager &AM) {
+  return this->runOnFunction(F);
+}
 
 // Publicly exposed interface to pass...
 // char &llvm::LowerSwitchID = LowerSwitch::ID;
@@ -125,9 +71,11 @@ char LowerSwitch::ID = 0;
 //                "Lower SwitchInst's to branches", false, false)
 
 // createLowerSwitchPass - Interface to this file...
-FunctionPass *llvm::createLegacyLowerSwitchPass() { return new LowerSwitch(); }
+PreservedAnalyses LegacyLowerSwitch::runOnFunction(Function &F) {
+  if (!toObfuscate(flag, &F, "lower-switch"))
+    return PreservedAnalyses::none();
 
-bool LowerSwitch::runOnFunction(Function &F) {
+  outs() << "\033[1;32m[LegacyLowerSwitch] Function : " << F.getName() << "\033[0m\n"; // 打印一下被混淆函数的symbol
   bool Changed = false;
   SmallPtrSet<BasicBlock *, 8> DeleteList;
 
@@ -150,24 +98,13 @@ bool LowerSwitch::runOnFunction(Function &F) {
     DeleteDeadBlock(BB);
   }
 
-  return Changed;
-}
-
-/// Used for debugging purposes.
-LLVM_ATTRIBUTE_USED
-static raw_ostream &operator<<(raw_ostream &O,
-                               const LowerSwitch::CaseVector &C) {
-  O << "[";
-
-  for (LowerSwitch::CaseVector::const_iterator B = C.begin(), E = C.end();
-       B != E;) {
-    O << *B->Low << " -" << *B->High;
-    if (++B != E)
-      O << ", ";
+  if (Changed){
+    return PreservedAnalyses::all();
   }
 
-  return O << "]";
+  return PreservedAnalyses::none();
 }
+
 
 /// Update the first occurrence of the "switch statement" BB in the PHI
 /// node with the "new" BB. The other occurrences will:
@@ -217,7 +154,7 @@ static void fixPhis(BasicBlock *SuccBB, BasicBlock *OrigBB, BasicBlock *NewBB,
 /// a block emitted by one of the previous calls to switchConvert in the call
 /// stack.
 BasicBlock *
-LowerSwitch::switchConvert(CaseItr Begin, CaseItr End, ConstantInt *LowerBound,
+LegacyLowerSwitch::switchConvert(CaseItr Begin, CaseItr End, ConstantInt *LowerBound,
                            ConstantInt *UpperBound, Value *Val,
                            BasicBlock *Predecessor, BasicBlock *OrigBlock,
                            BasicBlock *Default,
@@ -307,7 +244,7 @@ LowerSwitch::switchConvert(CaseItr Begin, CaseItr End, ConstantInt *LowerBound,
 /// switch's value == the case's value. If not, then it jumps to the default
 /// branch. At this point in the tree, the value can't be another valid case
 /// value, so the jump to the "default" branch is warranted.
-BasicBlock *LowerSwitch::newLeafBlock(CaseRange &Leaf, Value *Val,
+BasicBlock *LegacyLowerSwitch::newLeafBlock(CaseRange &Leaf, Value *Val,
                                       BasicBlock *OrigBlock,
                                       BasicBlock *Default) {
   Function *F = OrigBlock->getParent();
@@ -364,7 +301,7 @@ BasicBlock *LowerSwitch::newLeafBlock(CaseRange &Leaf, Value *Val,
 }
 
 /// Transform simple list of Cases into list of CaseRange's.
-unsigned LowerSwitch::Clusterify(CaseVector &Cases, SwitchInst *SI) {
+unsigned LegacyLowerSwitch::Clusterify(CaseVector &Cases, SwitchInst *SI) {
   unsigned numCmps = 0;
 
   // Start with "simple" cases
@@ -407,7 +344,7 @@ unsigned LowerSwitch::Clusterify(CaseVector &Cases, SwitchInst *SI) {
 
 /// Replace the specified switch instruction with a sequence of chained if-then
 /// insts in a balanced binary search.
-void LowerSwitch::processSwitchInst(SwitchInst *SI,
+void LegacyLowerSwitch::processSwitchInst(SwitchInst *SI,
                                     SmallPtrSetImpl<BasicBlock *> &DeleteList) {
   BasicBlock *CurBlock = SI->getParent();
   BasicBlock *OrigBlock = CurBlock;

@@ -40,8 +40,8 @@ void FlatteningPass::flatten(Function &F){
 
     // Lower switch
     // 在PMRegistration内优先进行Lower switch可能效果好些？
-    FunctionPass *lower = createLegacyLowerSwitchPass();
-    lower->runOnFunction(F);
+    auto lower = LegacyLowerSwitch(true);
+    lower.runOnFunction(F);
     //outs() << "\033[1;32mLower switch had open\033[0m\n";
 
     // 将除入口块（第一个基本块）以外的基本块保存到一个 vector 容器中，便于后续处理
