@@ -231,7 +231,11 @@ namespace llvm
             Call->eraseFromParent();
         }
 
+#if LLVM_VERSION_MAJOR >= 16
+        NF->splice(NF->begin(), F, F->getBasicBlockList());
+#else
         NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
+#endif
 
         // Loop over the argument list, transferring uses of the old arguments over to
         // the new arguments, also transferring over the names as well.
@@ -239,7 +243,7 @@ namespace llvm
         I2->setName("SecretArg");
         ++I2;
         for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
-             ++I)
+                ++I)
         {
             I->replaceAllUsesWith(I2);
             I2->takeName(I);
