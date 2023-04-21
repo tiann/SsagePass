@@ -120,11 +120,17 @@ llvm::PassPluginLibraryInfo getSsagePluginInfo() {
         }};
 }
 
+#ifdef _WIN32
+  #define EXPORTED __attribute__((dllexport))
+#else
+  #define EXPORTED
+#endif
+
 /**
  * @brief NEW PM
  * 
  */
-extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
+extern "C" LLVM_ATTRIBUTE_WEAK EXPORTED ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
   return getSsagePluginInfo();
 }
