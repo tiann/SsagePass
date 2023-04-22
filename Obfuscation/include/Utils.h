@@ -30,5 +30,11 @@ namespace llvm{
     void FixBasicBlockConstantExpr(BasicBlock *BB);
     void FixFunctionConstantExpr(Function *Func);
     string rand_str(int len);
+    bool usersAllInOneFunction(GlobalVariable *GV);
+    bool hasApplePtrauth(Module *M);
+    bool toObfuscateUint32Option(Function *f, std::string option, uint32_t *val);
+    bool readAnnotationMetadataUint32OptVal(Function *f, std::string opt, uint32_t *val);
+    bool readFlagUint32OptVal(Function *f, std::string opt, uint32_t *val);
+    static const char obfkindid[] = "MD_obf";
 }
 #endif // LLVM_UTILS_H

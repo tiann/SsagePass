@@ -122,6 +122,7 @@ add_library( SsageObfuscator MODULE # 生成动态库文件
   src/MBAObfuscation.cpp
   src/MBAUtils.cpp
   src/FlatteningEnhanced.cpp
+  src/HikariStringEncryption.cpp
 )
 
 target_include_directories(

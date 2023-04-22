@@ -10,6 +10,7 @@
 #include "llvm/Transforms/Utils/SymbolRewriter.h" // 重命名符号
 #include "IndirectCall.h" // 间接调用
 #include "LegacyLowerSwitch.h"
+#include "HikariStringEncryption.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 
@@ -85,6 +86,10 @@ llvm::PassPluginLibraryInfo getSsagePluginInfo() {
                   }
                   if (Name == "indibr"){
                     MPM.addPass(IndirectBranchPass(true));
+                    return true;
+                  }
+                  if (Name == "strcry"){
+                    MPM.addPass(HikariStringEncryptionPass(true));
                     return true;
                   }
                   return false;

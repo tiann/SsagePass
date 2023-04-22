@@ -196,3 +196,75 @@ string llvm::rand_str(int len){
     }
     return str;
 }
+
+bool llvm::usersAllInOneFunction(GlobalVariable *GV) {
+  std::vector<Instruction *> instusers;
+  for (User *user : GV->users()) {
+    if (Instruction *Inst = dyn_cast<Instruction>(user))
+      instusers.emplace_back(Inst);
+    else if (ConstantExpr *CE = dyn_cast<ConstantExpr>(user)) {
+      for (User *user2 : CE->users()) {
+        if (Instruction *Inst = dyn_cast<Instruction>(user2))
+          instusers.emplace_back(Inst);
+        else
+          return GV->getNumUses() == 1;
+      }
+    } else
+      return GV->getNumUses() == 1;
+  }
+  Function *LastFuncOfInst = nullptr;
+  for (Instruction *I : instusers) {
+    if (LastFuncOfInst != nullptr && I->getFunction() != LastFuncOfInst)
+      return false;
+    LastFuncOfInst = I->getFunction();
+  }
+  return true;
+}
+
+bool llvm::hasApplePtrauth(Module *M) {
+  for (GlobalVariable &GV : M->globals())
+    if (GV.getSection() == "llvm.ptrauth")
+      return true;
+  return false;
+}
+
+bool llvm::toObfuscateUint32Option(Function *f, std::string option, uint32_t *val) {
+  if (llvm::readAnnotationMetadataUint32OptVal(f, option, val) ||
+      llvm::readFlagUint32OptVal(f, option, val))
+    return true;
+  return false;
+}
+
+bool llvm::readAnnotationMetadataUint32OptVal(Function *f, std::string opt,
+                                        uint32_t *val) {
+  MDNode *Existing = f->getMetadata(llvm::obfkindid);
+  if (Existing) {
+    MDTuple *Tuple = cast<MDTuple>(Existing);
+    for (auto &N : Tuple->operands()) {
+      StringRef mdstr = cast<MDString>(N.get())->getString();
+      std::string estr = opt + "=";
+      if (mdstr.startswith(estr)) {
+        *val = atoi(mdstr.substr(strlen(estr.c_str())).str().c_str());
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool llvm::readFlagUint32OptVal(Function *f, std::string opt, uint32_t *val) {
+  for (Instruction &I : instructions(f)) {
+    Instruction *Inst = &I;
+    if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
+      if (CI->getCalledFunction() != nullptr &&
+          CI->getCalledFunction()->getName().contains("hikari_" + opt)) {
+        if (ConstantInt *C = dyn_cast<ConstantInt>(CI->getArgOperand(0))) {
+          *val = (uint32_t)C->getValue().getZExtValue();
+          CI->eraseFromParent();
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}

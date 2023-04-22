@@ -155,4 +155,6 @@ chmod +x demo.sh && ./demo.sh
 
 [LLVMMyPass](https://github.com/za233/LLVMMyPass) By za233
 
+[Hikari](https://github.com/61bcdefg/Hikari-LLVM15-Core) By 61bcdefg
+
 ---
