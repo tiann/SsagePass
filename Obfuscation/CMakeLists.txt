@@ -141,3 +141,10 @@ if(WIN32)
   llvm_map_components_to_libnames(llvm_libs core passes)
   target_link_libraries(SsageObfuscator ${llvm_libs})
 endif()
+
+#===============================================================================
+# 5. ADD TESTS
+#===============================================================================
+
+enable_testing()
+add_subdirectory(tests)
