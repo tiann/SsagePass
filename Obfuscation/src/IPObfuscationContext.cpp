@@ -232,7 +232,7 @@ namespace llvm
         }
 
 #if LLVM_VERSION_MAJOR >= 16
-        NF->splice(NF->begin(), F, F->getBasicBlockList());
+        NF->splice(NF->begin(), F, F->begin());
 #else
         NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
 #endif
