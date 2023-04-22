@@ -6,19 +6,25 @@ set(TMPDIR "${PROJECT_BINARY_DIR}/Testing/Temporary")
 function(add_pass_test TESTFILENAME PASS IDX)
   add_test(
     NAME "${TESTFILENAME}_opt_${IDX}"
-    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/opt -opaque-pointers=0 -load-pass-plugin ${PROJECT_BINARY_DIR}/libSsageObfuscator.so "-passes=${PASS}" "${TMPDIR}/${TESTFILENAME}.ll" -o "${TMPDIR}/${TESTFILENAME}.bc"
+    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/opt -opaque-pointers=0 -load-pass-plugin $<TARGET_FILE:SsageObfuscator> "-passes=${PASS}" "${TMPDIR}/${TESTFILENAME}.ll" -o "${TMPDIR}/${TESTFILENAME}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
+  
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(OUTPUTFILENAME "${TESTFILENAME}.exe")
+  else()
+	set(OUTPUTFILENAME "${TESTFILENAME}")
+  endif()
 
   add_test(
     NAME "${TESTFILENAME}_compile_${IDX}"
-    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ "${TMPDIR}/${TESTFILENAME}.bc" -o "${TMPDIR}/${TESTFILENAME}"
+    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ "${TMPDIR}/${TESTFILENAME}.bc" -o "${TMPDIR}/${OUTPUTFILENAME}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
 
   add_test(
     NAME "${TESTFILENAME}_run_${IDX}"
-    COMMAND "${TMPDIR}/${TESTFILENAME}"
+    COMMAND "${TMPDIR}/${OUTPUTFILENAME}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
 endfunction()
