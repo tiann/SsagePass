@@ -42,7 +42,7 @@ PreservedAnalyses HikariStringEncryptionPass::run(Module &M, ModuleAnalysisManag
     this->opaquepointers = !M.getContext().supportsTypedPointers();
 
     for (Function &F : M)
-        if (toObfuscate(flag, &F, "strenc")) {
+        if (toObfuscate(flag, &F, "strcry")) {
             outs() << "\033[1;32m[HikariStringEncryption] Function : " << F.getName() << "\033[0m\n";
 
             if (!toObfuscateUint32Option(&F, "strcry_prob",
