@@ -128,8 +128,8 @@ void MBAObfuscation::DoMBAObfuscation(Function &F){
                             substitute(BI);
                     }
                 } else {
-                    for (int i = 0; i < I->getNumOperands(); i++) {
-                        if (I->getOperand(0)->getType()->isIntegerTy() &&
+                    for (unsigned int i = 0; i < I->getNumOperands(); i++) {
+                        if (I->getOperand(i)->getType()->isIntegerTy() &&
                             RANDOM(ObfuProb)) {
                             // error occurs for unknown reasons
                             // if(isa<StoreInst>(I) || isa<CmpInst>(I) || isa<CallInst>(I)){

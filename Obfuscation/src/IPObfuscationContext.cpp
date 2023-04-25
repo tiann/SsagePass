@@ -28,7 +28,7 @@ namespace llvm
 
     PreservedAnalyses IPObfuscationContext::run(llvm::Module &M, ModuleAnalysisManager &AM)
     {
-        outs() << "\033[1;32m[IPObfuscationContext] is running\n";
+        outs() << "\033[1;32m[IPObfuscationContext] is running\033[0m\n";
         for (auto &F : M)
         {
             SurveyFunction(F);
