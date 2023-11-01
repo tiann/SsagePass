@@ -11,6 +11,9 @@ static cl::opt<bool> OnlyStr("onlystr", cl::init(true),
                              cl::desc("Encrypt string variable only"));
 
 PreservedAnalyses StringEncryptionPass::run(Module &M, ModuleAnalysisManager& AM) {
+    if(!this->flag)
+        return PreservedAnalyses::all();
+
     for (Module::iterator iter = M.begin(); iter != M.end(); iter++) {
         Function *F = &(*iter);
         outs() << "\033[1;32m[StringEncryption] Function : " << F->getName() << "\033[0m\n"; // 打印一下被混淆函数的symbol

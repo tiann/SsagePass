@@ -1,3 +1,4 @@
+#include <string_view>
 #include "SplitBasicBlock.h" // 基本块分割
 #include "Flattening.h"  // 控制流平坦化
 #include "MBAObfuscation.h" // 线性混合布尔算术混淆
@@ -15,6 +16,34 @@
 #include "llvm/Passes/PassPlugin.h"
 
 using namespace llvm;
+
+static cl::opt<std::string> PassOrder("pass-order", cl::init(""), cl::desc("Passes ordering"));
+
+std::vector<std::string_view> SplitString(const std::string_view str, const char delim = ','){   
+    std::vector<std::string_view> result;
+
+    int indexCommaToLeftOfColumn = 0;
+    int indexCommaToRightOfColumn = -1;
+
+    for (int i=0;i<static_cast<int>(str.size());i++)
+    {
+        if (str[i] == delim)
+        {
+            indexCommaToLeftOfColumn = indexCommaToRightOfColumn;
+            indexCommaToRightOfColumn = i;
+            int index = indexCommaToLeftOfColumn + 1;
+            int length = indexCommaToRightOfColumn - index;
+
+            std::string_view column(str.data() + index, length);
+            result.push_back(column);
+        }
+    }
+    const std::string_view finalColumn(str.data() + indexCommaToRightOfColumn + 1, str.size() - indexCommaToRightOfColumn - 1);
+    result.push_back(finalColumn);
+    return result;
+}
+
+
 
 /**
  * @brief Get the Ssage Plugin Info object
@@ -95,10 +124,48 @@ llvm::PassPluginLibraryInfo getSsagePluginInfo() {
                   return false;
             });
             // clang
-            /* PB.registerPipelineStartEPCallback( */
-            /*     [](llvm::ModulePassManager &MPM, // 模块Pass 作用于某个c文件内 */
-            /*        llvm::OptimizationLevel Level){ */
-            /*         MPM.addPass(StringEncryptionPass(false)); // 先进行字符串加密 出现字符串加密基本块以后 再进行基本块分割和其他混淆 加大解密难度 */
+            PB.registerPipelineStartEPCallback(
+                [](llvm::ModulePassManager &MPM, // 模块Pass 作用于某个c文件内
+                   llvm::OptimizationLevel Level){
+                      for(auto Name: SplitString(PassOrder)){
+                        if (Name == "strenc"){
+                          MPM.addPass(StringEncryptionPass(true));
+                        } else if(Name == "enfla"){ // 注册控制流平坦化
+                          MPM.addPass(FlatteningEnhanced(true));
+                        } else if(Name == "funwra"){
+                          MPM.addPass(FunctionWrapperPass(true));
+                        } else if (Name == "ipobf"){
+                          MPM.addPass(IPObfuscationContext(true));
+                        } else if (Name == "indibr"){
+                          MPM.addPass(IndirectBranchPass(true));
+                        } else if (Name == "strcry"){
+                          MPM.addPass(HikariStringEncryptionPass(true));
+                        }
+
+                        if (Name.starts_with("function")) {
+                          llvm::FunctionPassManager FPM;
+
+                          if(Name == "function(ofla)"){ // 注册控制流平坦化
+                            FPM.addPass(FlatteningPass(true));
+                          } else if(Name == "function(mba)"){
+                            FPM.addPass(MBAObfuscation(true)); // 来自 Pluto 的线性混合布尔算术混淆
+                          } else if(Name == "function(split)"){ // 注册基本块分割
+                            FPM.addPass(SplitBasicBlockPass(true));
+                          } else if(Name == "function(icall)"){
+                            FPM.addPass(IndirectCallPass(true)); // 来自goron的间接调用
+                          } else if(Name == "function(bcf)"){ // 注册虚假控制流
+                            FPM.addPass(BogusControlFlowPass(true));
+                          } else if(Name == "function(lower-switch)"){ // 注册虚假控制流
+                            FPM.addPass(LegacyLowerSwitch(true));
+                          } else if(Name == "function(vmf)"){ // 注册虚假控制流
+                            FPM.addPass(VMFlattenPass(true));
+                          } else {
+                            continue;
+                          }
+
+                          MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+                        }
+                      }
             /*         llvm::FunctionPassManager FPM; */
             /*         FPM.addPass(IndirectCallPass(false)); // 来自goron的间接调用 */
             /*         FPM.addPass(SplitBasicBlockPass(false));  // 优先进行基本块分割 */
@@ -110,8 +177,8 @@ llvm::PassPluginLibraryInfo getSsagePluginInfo() {
             /*         MPM.addPass(FlatteningEnhanced(false)); // 来自 Pluto 的平坦化控制流增强版 */
             /*         MPM.addPass(FunctionWrapperPass(false)); // 函数包装 理论上函数包装最好也是放在最后 */
             /*         MPM.addPass(IndirectBranchPass(false)); // 间接指令 理论上间接指令应该放在最后 */
-            /*         MPM.addPass(RewriteSymbolPass()); // 根据yaml信息 重命名特定symbols */
-            /* }); */
+                    /* MPM.addPass(RewriteSymbolPass()); // 根据yaml信息 重命名特定symbols */
+            });
             // 这里的注册时机不好 弃用以下方案 改用上面的方案
             // 自动注册 需要添加 -O1 参数 然则可能部分pass不生效
             // PB.registerVectorizerStartEPCallback(

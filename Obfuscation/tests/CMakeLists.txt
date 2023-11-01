@@ -27,6 +27,18 @@ function(add_pass_test TESTFILENAME PASS IDX)
     COMMAND "${TMPDIR}/${OUTPUTFILENAME}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
+
+  add_test(
+    NAME "${TESTFILENAME}_compile_clang_${IDX}"
+    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ -Xclang -no-opaque-pointers -O3 -fpass-plugin=$<TARGET_FILE:SsageObfuscator> -Xclang -load -Xclang $<TARGET_FILE:SsageObfuscator> -mllvm "--pass-order=${PASS}" "${TESTFILENAME}.cpp" -o "${TMPDIR}/${OUTPUTFILENAME}.clang"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+  )
+
+  add_test(
+    NAME "${TESTFILENAME}_run_clang_${IDX}"
+    COMMAND "${TMPDIR}/${OUTPUTFILENAME}.clang"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+  )
 endfunction()
 
 foreach(TESTFILE IN LISTS test_files)

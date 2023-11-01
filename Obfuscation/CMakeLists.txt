@@ -72,7 +72,7 @@ add_definitions(${LLVM_DEFINITIONS})
 # 3. SsagePass BUILD CONFIGURATION
 #===============================================================================
 # Use the same C++ standard as LLVM does
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "")
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "")
 
 # Build type
 if (NOT CMAKE_BUILD_TYPE)
