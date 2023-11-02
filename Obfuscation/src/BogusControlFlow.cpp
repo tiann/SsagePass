@@ -649,8 +649,8 @@ bool BogusControlFlowPass::doF(Module &M) {
       Constant *RHSC = ConstantInt::get(I32Ty, cryptoutils->get_uint32_t());
       GlobalVariable *LHSGV = new GlobalVariable(M, Type::getInt32Ty(M.getContext()), false, GlobalValue::PrivateLinkage, LHSC, "LHSGV");
       GlobalVariable *RHSGV = new GlobalVariable(M, Type::getInt32Ty(M.getContext()), false, GlobalValue::PrivateLinkage, RHSC, "RHSGV");
-      LoadInst *LHS = IRBReal.CreateLoad(LHSGV->getType()->getPointerElementType(), LHSGV, "Initial LHS");
-      LoadInst *RHS = IRBReal.CreateLoad(RHSGV->getType()->getPointerElementType(), RHSGV, "Initial LHS");
+      LoadInst *LHS = IRBReal.CreateLoad(LHSGV->getValueType(), LHSGV, "Initial LHS");
+      LoadInst *RHS = IRBReal.CreateLoad(RHSGV->getValueType(), RHSGV, "Initial LHS");
       // To Speed-Up Evaluation
       Value *emuLHS = LHSC;
       Value *emuRHS = RHSC;
