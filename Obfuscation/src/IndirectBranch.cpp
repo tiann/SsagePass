@@ -76,8 +76,8 @@ bool IndirectBranchPass::HandleFunction(Function &Func){
         } else {
             index = ConstantInt::get(Type::getInt32Ty(Func.getParent()->getContext()), indexmap[BI->getSuccessor(0)]);
         }
-        Value *GEP = IRB.CreateGEP(LoadFrom->getType()->getPointerElementType(), LoadFrom, {zero, index});
-        LoadInst *LI = IRB.CreateLoad(GEP->getType()->getPointerElementType(), GEP, "IndirectBranchingTargetAddress");
+        Value *GEP = IRB.CreateGEP(LoadFrom->getValueType(), LoadFrom, {zero, index});
+        LoadInst *LI = IRB.CreateLoad(GEP->getType(), GEP, "IndirectBranchingTargetAddress");
         IndirectBrInst *indirBr = IndirectBrInst::Create(LI, BBs.size());
         for (BasicBlock *BB : BBs){
             indirBr->addDestination(BB);
