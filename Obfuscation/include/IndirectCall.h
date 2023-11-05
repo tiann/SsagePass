@@ -8,7 +8,6 @@
 // User libs
 #include "ObfuscationOptions.h"
 #include "IPObfuscationContext.h"
-#include "compat/CallSite.h"
 #include "CryptoUtils.h"
 #include "Utils.h"
 // System libs

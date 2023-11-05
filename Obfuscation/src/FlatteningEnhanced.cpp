@@ -21,7 +21,6 @@
 using namespace llvm;
 
 PreservedAnalyses FlatteningEnhanced::run(Module &M, ModuleAnalysisManager& AM) {
-    vector<CallSite *> callsites;    
     Function *updateFunc = buildUpdateKeyFunc(&M);
 
     for(Function &f: M){

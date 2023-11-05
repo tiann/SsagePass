@@ -6,7 +6,7 @@ set(TMPDIR "${PROJECT_BINARY_DIR}/Testing/Temporary")
 function(add_pass_test TESTFILENAME PASS IDX)
   add_test(
     NAME "${TESTFILENAME}_opt_${IDX}"
-    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/opt -opaque-pointers=0 -load-pass-plugin $<TARGET_FILE:SsageObfuscator> "-passes=${PASS}" "${TMPDIR}/${TESTFILENAME}.ll" -o "${TMPDIR}/${TESTFILENAME}.bc"
+    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/opt -load-pass-plugin $<TARGET_FILE:SsageObfuscator> "-passes=${PASS}" "${TMPDIR}/${TESTFILENAME}.ll" -o "${TMPDIR}/${TESTFILENAME}.bc"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
   
@@ -30,7 +30,7 @@ function(add_pass_test TESTFILENAME PASS IDX)
 
   add_test(
     NAME "${TESTFILENAME}_compile_clang_${IDX}"
-    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ -Xclang -no-opaque-pointers -O3 -fpass-plugin=$<TARGET_FILE:SsageObfuscator> -Xclang -load -Xclang $<TARGET_FILE:SsageObfuscator> -mllvm "--pass-order=${PASS}" "${TESTFILENAME}.cpp" -o "${TMPDIR}/${OUTPUTFILENAME}.clang"
+    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ -O3 -fpass-plugin=$<TARGET_FILE:SsageObfuscator> -Xclang -load -Xclang $<TARGET_FILE:SsageObfuscator> -mllvm "--pass-order=${PASS}" "${TESTFILENAME}.cpp" -o "${TMPDIR}/${OUTPUTFILENAME}.clang"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
 
@@ -46,7 +46,7 @@ foreach(TESTFILE IN LISTS test_files)
 
   add_test(
     NAME "${TESTFILENAME}_emit_llvm"
-    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ -O3 -S -emit-llvm -Xclang -no-opaque-pointers "${TESTFILENAME}.cpp" -o "${TMPDIR}/${TESTFILENAME}.ll"
+    COMMAND ${LT_LLVM_INSTALL_DIR}/bin/clang++ -O3 -S -emit-llvm "${TESTFILENAME}.cpp" -o "${TMPDIR}/${TESTFILENAME}.ll"
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
   )
 
