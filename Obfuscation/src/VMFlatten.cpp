@@ -107,7 +107,7 @@ void VMFlattenPass::gen_inst(std::vector<VMInst *> *all_inst, std::map<Node *, u
 }
 
 void VMFlattenPass::dump_inst(std::vector<VMInst *> *all_inst){
-    unsigned int x = 0;
+    /* unsigned int x = 0; */
     for (std::vector<VMInst *>::iterator i = all_inst->begin(); i != all_inst->end(); i++){
         //printf("\033[1;32m0x%02x: \033[0m", x++);
         VMInst *c = *i;
@@ -130,7 +130,7 @@ void VMFlattenPass::DoFlatten(Function *f, int seed){
     if (origBB.size() <= 1){
         return;
     }
-    unsigned int rand_val = seed;
+
     Function::iterator tmp = f->begin();
     BasicBlock *oldEntry = &*tmp;
     origBB.erase(origBB.begin());
@@ -205,18 +205,24 @@ void VMFlattenPass::DoFlatten(Function *f, int seed){
     IRBuilder<> IRB(vm_entry);
     Value *zero = ConstantInt::get(Type::getInt32Ty(f->getContext()), 0);
 
-    Value *op1_offset = IRB.CreateAdd(IRB.CreateLoad(vm_pc->getType()->getPointerElementType(), vm_pc), ConstantInt::get(Type::getInt32Ty(f->getContext()), 1));
-    Value *op2_offset = IRB.CreateAdd(IRB.CreateLoad(vm_pc->getType()->getPointerElementType(),vm_pc), ConstantInt::get(Type::getInt32Ty(f->getContext()), 2));
+    Value *op1_offset = IRB.CreateAdd(IRB.CreateLoad(vm_pc->getAllocatedType(), vm_pc), ConstantInt::get(Type::getInt32Ty(f->getContext()), 1));
+    Value *op2_offset = IRB.CreateAdd(IRB.CreateLoad(vm_pc->getAllocatedType(),vm_pc), ConstantInt::get(Type::getInt32Ty(f->getContext()), 2));
 
-    Value *optype = IRB.CreateLoad(IRB.CreateGEP(oparr_var->getType()->getPointerElementType(), oparr_var, {zero, IRB.CreateLoad(vm_pc->getType()->getPointerElementType(), vm_pc)})->getType()->getPointerElementType(),
-                                   IRB.CreateGEP(oparr_var->getType()->getPointerElementType(), oparr_var, {zero, IRB.CreateLoad(vm_pc->getType()->getPointerElementType(), vm_pc)}));
-    Value *op1 = IRB.CreateLoad(IRB.CreateGEP(oparr_var->getType()->getPointerElementType(), oparr_var, {zero, op1_offset})->getType()->getPointerElementType(),
-                                IRB.CreateGEP(oparr_var->getType()->getPointerElementType(), oparr_var, {zero, op1_offset}));
+    Value *optype = IRB.CreateLoad(
+        vm_pc->getAllocatedType(),
+        IRB.CreateGEP(oparr_var->getValueType(), oparr_var, {zero, IRB.CreateLoad(vm_pc->getAllocatedType(), vm_pc)})
+    );
+    Value *op1 = IRB.CreateLoad(
+        op1_offset->getType(),
+        IRB.CreateGEP(oparr_var->getValueType(), oparr_var, {zero, op1_offset})
+    );
 
-    Value *op2 = IRB.CreateLoad(IRB.CreateGEP(oparr_var->getType()->getPointerElementType(), oparr_var, {zero, op2_offset})->getType()->getPointerElementType(),
-                                IRB.CreateGEP(oparr_var->getType()->getPointerElementType(), oparr_var, {zero, op2_offset}));
+    Value *op2 = IRB.CreateLoad(
+        op2_offset->getType(),
+        IRB.CreateGEP(oparr_var->getValueType(), oparr_var, {zero, op2_offset})
+    );
 
-    IRB.CreateStore(IRB.CreateAdd(IRB.CreateLoad(vm_pc->getType()->getPointerElementType(),vm_pc), ConstantInt::get(Type::getInt32Ty(f->getContext()), 3)), vm_pc);
+    IRB.CreateStore(IRB.CreateAdd(IRB.CreateLoad(vm_pc->getAllocatedType(),vm_pc), ConstantInt::get(Type::getInt32Ty(f->getContext()), 3)), vm_pc);
     BasicBlock *run_block = BasicBlock::Create(f->getContext(), "RunBlock", f, firstbb);
     BasicBlock *jmp_boring = BasicBlock::Create(f->getContext(), "JmpBoring", f, firstbb);
     BasicBlock *jmp_select = BasicBlock::Create(f->getContext(), "JmpSelect", f, firstbb);
@@ -260,7 +266,6 @@ void VMFlattenPass::DoFlatten(Function *f, int seed){
         BasicBlock *block = *b;
         if (block->getTerminator()->getNumSuccessors() == 1){
             errs() << "\033[1;32mThis block has 1 successor\033[0m\n";
-            BasicBlock *succ = block->getTerminator()->getSuccessor(0);
             block->getTerminator()->eraseFromParent();
             BranchInst::Create(defaultCase, block);
         } else if (block->getTerminator()->getNumSuccessors() == 2){
@@ -281,7 +286,7 @@ void VMFlattenPass::DoFlatten(Function *f, int seed){
     IRB.SetInsertPoint(jmp_select);
     BasicBlock *select_true = BasicBlock::Create(f->getContext(), "JmpSelectTrue", f, firstbb);
     BasicBlock *select_false = BasicBlock::Create(f->getContext(), "JmpSelectFalse", f, firstbb);
-    IRB.CreateCondBr(IRB.CreateICmpEQ(IRB.CreateLoad(vm_flag->getType()->getPointerElementType(),vm_flag), ConstantInt::get(Type::getInt32Ty(f->getContext()), 1)), select_true, select_false);
+    IRB.CreateCondBr(IRB.CreateICmpEQ(IRB.CreateLoad(vm_flag->getAllocatedType(),vm_flag), ConstantInt::get(Type::getInt32Ty(f->getContext()), 1)), select_true, select_false);
     IRB.SetInsertPoint(select_true);
     IRB.CreateStore(op1, vm_pc);
     IRB.CreateBr(vm_entry);
