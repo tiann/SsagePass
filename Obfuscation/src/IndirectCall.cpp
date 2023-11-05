@@ -67,8 +67,8 @@ bool IndirectCallPass::doIndirctCall(Function &Fn){
         Args.clear();
         ArgAttrVec.clear();
         Value *Idx = ConstantInt::get(Type::getInt32Ty(Ctx), CalleeNumbering[CS.getCalledFunction()]);
-        Value *GEP = IRB.CreateGEP(Targets->getType()->getPointerElementType(),Targets, {Zero, Idx});
-        LoadInst *EncDestAddr = IRB.CreateLoad(GEP->getType()->getPointerElementType(),GEP, CI->getName());
+        GetElementPtrInst *GEP = static_cast<GetElementPtrInst*>(IRB.CreateGEP(Targets->getValueType(),Targets, {Zero, Idx}));
+        LoadInst *EncDestAddr = IRB.CreateLoad(GEP->getSourceElementType(), GEP, CI->getName());
         Constant *X;
         if (SecretInfo){
             X = ConstantExpr::getSub(SecretInfo->SecretCI, EncKey);
@@ -89,7 +89,7 @@ bool IndirectCallPass::doIndirctCall(Function &Fn){
         }
         AttributeList NewCallPAL = AttributeList::get(IRB.getContext(), CallPAL.getFnAttrs(), CallPAL.getRetAttrs(), ArgAttrVec);
         Value *Secret = IRB.CreateSub(X, MySecret);
-        Value *DestAddr = IRB.CreateGEP(EncDestAddr->getType()->getPointerElementType(),EncDestAddr, Secret);
+        Value *DestAddr = IRB.CreateGEP(EncDestAddr->getType(),EncDestAddr, Secret);
         Value *FnPtr = IRB.CreateBitCast(DestAddr, FTy->getPointerTo());
         FnPtr->setName("Call_" + Callee->getName());
         CallInst *NewCall = IRB.CreateCall(FTy, FnPtr, Args, Call->getName());
