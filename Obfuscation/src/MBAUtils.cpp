@@ -87,13 +87,13 @@ Value *llvm::insertLinearMBA(int64_t *params, Instruction *insertBefore) {
         GlobalVariable *yPtr = new GlobalVariable(
             M, type, false, GlobalValue::PrivateLinkage, CONST(type, randY), "y");
         //x = builder.CreateLoad(xPtr);
-        x = builder.CreateLoad(xPtr->getType()->getPointerElementType(), xPtr, "");
+        x = builder.CreateLoad(xPtr->getValueType(), xPtr, "");
         //y = builder.CreateLoad(yPtr);
-        y = builder.CreateLoad(yPtr->getType()->getPointerElementType(), yPtr, "");
+        y = builder.CreateLoad(yPtr->getValueType(), yPtr, "");
     }
-    Value *mbaExpr = builder.CreateAlloca(x->getType());
-    builder.CreateStore(ConstantInt::get(x->getType(), 0), mbaExpr);
-    mbaExpr = builder.CreateLoad(mbaExpr->getType()->getPointerElementType(), mbaExpr, "");
+    AllocaInst *mbaAllocExpr = builder.CreateAlloca(x->getType());
+    builder.CreateStore(ConstantInt::get(x->getType(), 0), mbaAllocExpr);
+    Value *mbaExpr = builder.CreateLoad(mbaAllocExpr->getAllocatedType(), mbaAllocExpr, "");
 
     Value *boolExpr, *term;
     for (int i = 0; i < 15; i++) {
