@@ -254,7 +254,7 @@ namespace llvm
         IntegerType *I32Ty = Type::getInt32Ty(NF->getContext());
         IRBuilder<> IRB(&NF->getEntryBlock().front());
         Value *Ptr = IRB.CreateBitCast(NF->arg_begin(), I32Ty->getPointerTo());
-        LoadInst *MySecret = IRB.CreateLoad(Ptr->getType()->getPointerElementType(),Ptr);
+        LoadInst *MySecret = IRB.CreateLoad(Ptr->getType(), Ptr);
 
         IPOInfo *Info = IPOInfoMap[F];
         Info->SecretLI->eraseFromParent();
@@ -283,7 +283,7 @@ namespace llvm
         uint32_t V = RandomEngine.get_uint32_t();
         ConstantInt *SecretCI = ConstantInt::get(I32Ty, V, false);
         IRB.CreateStore(SecretCI, CallerSlot);
-        LoadInst *MySecret = IRB.CreateLoad(CallerSlot->getType()->getPointerElementType(),CallerSlot, "MySecret");
+        LoadInst *MySecret = IRB.CreateLoad(CallerSlot->getAllocatedType(),CallerSlot, "MySecret");
 
         IPOInfo *Info = new IPOInfo(CallerSlot, CalleeSlot, MySecret, SecretCI);
         return Info;
