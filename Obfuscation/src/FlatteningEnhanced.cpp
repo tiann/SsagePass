@@ -67,19 +67,25 @@ Function *FlatteningEnhanced::buildUpdateKeyFunc(Module *m) {
     Value *keyArray = ++iter;
     Value *num = ++iter;
     IRBuilder<> irb(entry);
-    Value *i = irb.CreateAlloca(irb.getInt32Ty());
+    AllocaInst *i = irb.CreateAlloca(irb.getInt32Ty());
     irb.CreateStore(irb.getInt32(0), i);
     irb.CreateCondBr(irb.CreateICmpEQ(flag, irb.getInt8(0)), cond, end);
 
     irb.SetInsertPoint(cond);
-    irb.CreateCondBr(irb.CreateICmpSLT(irb.CreateLoad(i->getType()->getPointerElementType(), i), len), update, end);
+    irb.CreateCondBr(irb.CreateICmpSLT(irb.CreateLoad(i->getAllocatedType(), i), len), update, end);
 
     irb.SetInsertPoint(update);
 
-    Value *pos = irb.CreateLoad(irb.CreateGEP(posArray->getType()->getPointerElementType(), posArray, irb.CreateLoad(i->getType()->getPointerElementType(), i))->getType()->getPointerElementType(), irb.CreateGEP(posArray->getType()->getPointerElementType(), posArray, irb.CreateLoad(i->getType()->getPointerElementType(), i)));
-    Value *key = irb.CreateGEP(keyArray->getType()->getPointerElementType(), keyArray, pos);
-    irb.CreateStore(irb.CreateXor(irb.CreateLoad(key->getType()->getPointerElementType(), key), num), key);
-    irb.CreateStore(irb.CreateAdd(irb.CreateLoad(i->getType()->getPointerElementType(), i), irb.getInt32(1)), i);
+    GetElementPtrInst *gep1 = static_cast<GetElementPtrInst*>(
+        irb.CreateGEP(Type::getInt32Ty(m->getContext()), posArray, irb.CreateLoad(i->getAllocatedType(), i))
+    );
+    Value *pos = irb.CreateLoad(
+        gep1->getSourceElementType(),
+        gep1
+    );
+    GetElementPtrInst *key = static_cast<GetElementPtrInst*>(irb.CreateGEP(Type::getInt32Ty(m->getContext()), keyArray, pos));
+    irb.CreateStore(irb.CreateXor(irb.CreateLoad(key->getSourceElementType(), key), num), key);
+    irb.CreateStore(irb.CreateAdd(irb.CreateLoad(i->getAllocatedType(), i), irb.getInt32(1)), i);
     irb.CreateBr(cond);
 
     irb.SetInsertPoint(end);
@@ -112,9 +118,6 @@ void FlatteningEnhanced::DoFlatteningEnhanced(Function *f, int seed, Function *u
         return;
 
     BasicBlock *oldEntry = &f->getEntryBlock();
-    BranchInst *firstBr = NULL;
-    if (isa<BranchInst>(oldEntry->getTerminator()))
-        firstBr = cast<BranchInst>(oldEntry->getTerminator());
     BasicBlock *firstbb = oldEntry->getTerminator()->getSuccessor(0);
 
     BasicBlock::iterator iter = oldEntry->end(); // Split the first basic block
@@ -151,7 +154,7 @@ void FlatteningEnhanced::DoFlatteningEnhanced(Function *f, int seed, Function *u
                                                         // key for each block
     Value *visitedArray =
         irb.CreateAlloca(irb.getInt8Ty(), irb.getInt32(origBB.size()));
-    Value *keyArray =
+    AllocaInst *keyArray =
         irb.CreateAlloca(irb.getInt32Ty(), irb.getInt32(origBB.size()));
     irb.CreateMemSet(visitedArray, irb.getInt8(0), origBB.size(), (MaybeAlign)0);
     irb.CreateMemSet(keyArray, irb.getInt8(0), origBB.size() * 4, (MaybeAlign)0);
@@ -181,9 +184,10 @@ void FlatteningEnhanced::DoFlatteningEnhanced(Function *f, int seed, Function *u
         }
         }
         irb.SetInsertPoint(block->getTerminator());
-        Value *ptr =
-            irb.CreateGEP(irb.getInt8Ty(), visitedArray, irb.getInt32(idx));
-        Value *visited = irb.CreateLoad(ptr->getType()->getPointerElementType(), ptr);
+        GetElementPtrInst *ptr = static_cast<GetElementPtrInst*>(
+            irb.CreateGEP(irb.getInt8Ty(), visitedArray, irb.getInt32(idx))
+        );
+        Value *visited = irb.CreateLoad(ptr->getSourceElementType(), ptr);
         if (doms.size() != 0) {
         ArrayType *arrayType = ArrayType::get(irb.getInt32Ty(), doms.size());
         Constant *doms_array =
@@ -194,7 +198,7 @@ void FlatteningEnhanced::DoFlatteningEnhanced(Function *f, int seed, Function *u
         irb.CreateCall(
             FunctionCallee(updateFunc),
             {visited, irb.getInt32(doms.size()),
-            irb.CreateGEP(dom_variable->getType()->getPointerElementType(), dom_variable, {irb.getInt32(0), irb.getInt32(0)}),
+            irb.CreateGEP(dom_variable->getValueType(), dom_variable, {irb.getInt32(0), irb.getInt32(0)}),
             keyArray, irb.getInt32(key_list[idx])});
         }
 
@@ -270,10 +274,16 @@ void FlatteningEnhanced::DoFlatteningEnhanced(Function *f, int seed, Function *u
             block->getTerminator()->eraseFromParent();
 
             irb.SetInsertPoint(block);
+
+            GetElementPtrInst *gep2 = static_cast<GetElementPtrInst*>(
+                irb.CreateGEP(keyArray->getAllocatedType(), keyArray, irb.getInt32(index_map[block]))
+            );
             irb.CreateStore(
                 irb.CreateXor(
-                    irb.CreateLoad(irb.CreateGEP(keyArray->getType()->getPointerElementType(), keyArray, irb.getInt32(index_map[block]))->getType()->getPointerElementType(),
-                        irb.CreateGEP(keyArray->getType()->getPointerElementType(), keyArray, irb.getInt32(index_map[block]))),
+                    irb.CreateLoad(
+                        gep2->getSourceElementType(),
+                        gep2
+                    ),
                     ConstantInt::get(sw->getCondition()->getType(), fixNum)),
                 switchVar);
             BranchInst::Create(loopEnd, block);
@@ -316,12 +326,24 @@ void FlatteningEnhanced::DoFlatteningEnhanced(Function *f, int seed, Function *u
             irb.SetInsertPoint(block);
             // SelectInst
             // *pos=SelectInst::Create(oldBr->getCondition(),ConstantInt::get(sw->getCondition()->getType(),7),ConstantInt::get(sw->getCondition()->getType(),8),Twine(""),block->getTerminator());
+            GetElementPtrInst *gep3 = static_cast<GetElementPtrInst*>(
+                irb.CreateGEP(
+                    keyArray->getAllocatedType(),
+                    keyArray,
+                    irb.getInt32(index_map[block])
+                )
+            );
+
             irb.CreateStore(
-                irb.CreateXor(irb.CreateLoad(irb.CreateGEP(keyArray->getType()->getPointerElementType(),
-                                keyArray, irb.getInt32(index_map[block]))->getType()->getPointerElementType(), irb.CreateGEP(keyArray->getType()->getPointerElementType(),
-                                keyArray, irb.getInt32(index_map[block]))),
-                            select),
-                switchVar);
+                irb.CreateXor(
+                    irb.CreateLoad(
+                        gep3->getSourceElementType(),
+                        gep3
+                    ),
+                    select
+                ),
+                switchVar
+            );
             BranchInst::Create(loopEnd, block);
         }
         } else
