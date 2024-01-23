@@ -121,7 +121,7 @@
 namespace{
     using namespace llvm;
     static BinaryOperator *CreateFNeg(Value *Op, const Twine &Name = "", Instruction *InsertBefore = nullptr){
-        Value *zero = ConstantFP::getZeroValueForNegation(Op->getType());
+        Value *zero = ConstantFP::getNegativeZero(Op->getType());
         return BinaryOperator::Create(Instruction::FSub, zero, Op, Name, InsertBefore);
     }
 } // namespace

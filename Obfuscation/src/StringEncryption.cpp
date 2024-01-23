@@ -19,14 +19,15 @@ PreservedAnalyses StringEncryptionPass::run(Module &M, ModuleAnalysisManager& AM
         outs() << "\033[1;32m[StringEncryption] Function : " << F->getName() << "\033[0m\n"; // 打印一下被混淆函数的symbol
     }
     INIT_CONTEXT(M);
-    vector<GlobalVariable *> GVs;
+    // vector<GlobalVariable *> GVs(M.global_begin(), M.global_end());
 
-    for (GlobalVariable &GV : M.getGlobalList()) {
-        GVs.push_back(&GV);
-    }
+    //for (GlobalVariable &GV : M.getGlobalList()) {
+    //    GVs.push_back(&GV);
+    //}
+    
 
     for (int i = 0; i < ObfuTimes; i++) {
-        for (GlobalVariable *GV : GVs) {
+        for (auto GV = M.global_begin(); GV != M.global_end(); ++GV) {
         // Only encrypt globals of integer and array
         if (!GV->getValueType()->isIntegerTy() &&
             !GV->getValueType()->isArrayTy()) {
@@ -56,14 +57,14 @@ PreservedAnalyses StringEncryptionPass::run(Module &M, ModuleAnalysisManager& AM
                 GV->setInitializer(ConstantDataArray::getRaw(
                     StringRef(dataCopy, arrLen), eleNum, arrData->getElementType()));
                 GV->setConstant(false);
-                insertArrayDecryption(M, {GV, key, eleNum}, arrData);
+                insertArrayDecryption(M, {&(*GV), key, eleNum}, arrData);
             } else if (intData) {
                 uint64_t key = cryptoutils->get_uint64_t();
                 ConstantInt *enc =
                     CONST(intData->getType(), key ^ intData->getZExtValue());
                 GV->setInitializer(enc);
                 GV->setConstant(false);
-                insertIntDecryption(M, {GV, key, 1LL}, intData);
+                insertIntDecryption(M, {&(*GV), key, 1LL}, intData);
             }
         }
         }
